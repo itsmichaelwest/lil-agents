@@ -1,0 +1,49 @@
+<UserControl
+    x:Class="LilAgents.Views.OnboardingView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Border
+        x:Name="RootBorder"
+        BorderThickness="2.5"
+        CornerRadius="24"
+        Padding="28,24,28,20"
+        MaxWidth="400">
+        <StackPanel Spacing="16">
+            <TextBlock
+                x:Name="TitleText"
+                Text="claude ~"
+                FontSize="14"
+                FontWeight="ExtraBold"
+                HorizontalAlignment="Left" />
+
+            <Rectangle
+                x:Name="SeparatorLine"
+                Height="1"
+                HorizontalAlignment="Stretch" />
+
+            <TextBlock
+                x:Name="BodyText"
+                TextWrapping="Wrap"
+                FontSize="13"
+                LineHeight="20">
+                <Run Text="hey! we're bruce and jazz &#x2014; your lil taskbar agents." />
+                <LineBreak /><LineBreak />
+                <Run Text="click either of us to open a Claude AI chat. we'll walk around while you work and let you know when Claude's thinking." />
+                <LineBreak /><LineBreak />
+                <Run Text="check the system tray icon for themes, sounds, and more options." />
+                <LineBreak /><LineBreak />
+                <Run Text="click anywhere outside to dismiss, then click us again to start chatting." />
+            </TextBlock>
+
+            <Button
+                x:Name="DismissButton"
+                Content="Got it!"
+                HorizontalAlignment="Right"
+                Padding="16,8"
+                Foreground="White"
+                CornerRadius="12"
+                Click="OnDismissClicked" />
+        </StackPanel>
+    </Border>
+</UserControl>

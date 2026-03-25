@@ -23,5 +23,18 @@ xcuserdata/
 
 # Sparkle
 *.dmg
-*.zip
 *.xcworkspace/xcshareddata/swiftpm/
+
+# Windows / .NET
+windows/**/bin/
+windows/**/obj/
+windows/**/.vs/
+windows/installer/Output/
+*.user
+*.suo
+
+# Generated sprite frames (regenerate with: ffmpeg -i assets/videos/walk-*.mov ...)
+assets/sprites/*_frames/
+
+# FFmpeg shared libraries (auto-downloaded on build)
+lib/ffmpeg/

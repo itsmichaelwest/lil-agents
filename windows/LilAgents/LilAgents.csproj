@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <RootNamespace>LilAgents</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <WindowsPackageType>None</WindowsPackageType>
+    <EnableMsixTooling>false</EnableMsixTooling>
+    <Version>1.0.0</Version>
+    <ApplicationIcon>Assets\Icons\trayicon-dark.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260317003" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="WinUIEx" Version="2.9.0" />
+    <PackageReference Include="System.Drawing.Common" Version="9.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- Ensure XBF (compiled XAML) files are included in publish output -->
+  <Target Name="IncludeXbfInPublish" AfterTargets="Publish">
+    <ItemGroup>
+      <XbfFiles Include="$(OutputPath)**\*.xbf" />
+    </ItemGroup>
+    <Copy SourceFiles="@(XbfFiles)" DestinationFiles="@(XbfFiles->'$(PublishDir)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+
+  <!-- Shared assets linked from monorepo root -->
+  <ItemGroup>
+    <Content Include="..\..\assets\sprites\walk-bruce-01.png" Link="Assets\Sprites\walk-bruce-01.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\assets\sprites\walk-jazz-01.png" Link="Assets\Sprites\walk-jazz-01.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\assets\sounds\*" Link="Assets\Sounds\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
