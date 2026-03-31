@@ -239,8 +239,12 @@ public sealed partial class PopoverWindow : Window
         SetForegroundWindow(hwnd);
         Activate();
         Chat.CompletePendingSwap();
-        Chat.FocusInput();
         Chat.ScrollToBottom();
+
+        // Defer focus — WinUI 3 ignores Focus() during activation
+        // because the XAML tree hasn't finished layout yet.
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+            () => Chat.FocusInput());
     }
 
     private Windows.Foundation.Point? _pendingPosition;
