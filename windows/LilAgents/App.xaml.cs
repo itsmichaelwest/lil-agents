@@ -39,12 +39,12 @@ public partial class App : Application
         public required CharacterOverlayWindow Renderer { get; init; }
         public required BubbleOverlayWindow Bubble { get; init; }
         public required SpriteSheet Sprites { get; init; }
-        public ClaudeSession? Session { get; set; }
+        public IChatSession? Session { get; set; }
         public PopoverWindow? Popover { get; set; }
 
         public void Dispose()
         {
-            Session?.Dispose();
+            (Session as IDisposable)?.Dispose();
             Popover?.Close();
             Renderer.Dispose();
             Bubble.Dispose();
@@ -172,10 +172,10 @@ public partial class App : Application
         if (!_characterStates.TryGetValue(character.Name, out var state))
             return;
 
-        // Lazy-create the Claude session
+        // Lazy-create the chat session using the current provider
         if (state.Session is null)
         {
-            var session = new ClaudeSession(DispatcherQueue.GetForCurrentThread());
+            var session = AgentProviderExtensions.Current.CreateSession(DispatcherQueue.GetForCurrentThread());
             character.AttachChatSession(session);
             state.Session = session;
             session.Start();
@@ -273,6 +273,30 @@ public partial class App : Application
             {
                 if (state.Popover is not null)
                     ApplyThemeToPopover(state.Popover, state.Character);
+            }
+        };
+
+        tray.ProviderSelected += provider =>
+        {
+            AgentProviderExtensions.Current = provider;
+            // Terminate existing sessions and clear UI
+            foreach (var (name, state) in _characterStates)
+            {
+                if (state.Session is not null)
+                {
+                    state.Session.Terminate();
+                    state.Character.DetachChatSession();
+                    (state.Session as IDisposable)?.Dispose();
+                    state.Session = null;
+                }
+                if (state.Character.IsIdleForPopover)
+                    state.Character.ClosePopover();
+                if (state.Popover is not null)
+                {
+                    state.Popover.UnbindSession();
+                    state.Popover.Close();
+                    state.Popover = null;
+                }
             }
         };
 

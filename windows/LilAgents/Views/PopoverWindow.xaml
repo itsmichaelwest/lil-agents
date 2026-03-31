@@ -28,6 +28,22 @@
                         VerticalAlignment="Center"
                         FontSize="12"
                         IsHitTestVisible="False" />
+                    <Button
+                        x:Name="CopyButton"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Padding="4"
+                        MinWidth="0"
+                        MinHeight="0"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Click="CopyButton_Click"
+                        ToolTipService.ToolTip="Copy last response">
+                        <FontIcon
+                            x:Name="CopyIcon"
+                            Glyph="&#xE8C8;"
+                            FontSize="12" />
+                    </Button>
                 </Grid>
 
                 <!-- Separator -->

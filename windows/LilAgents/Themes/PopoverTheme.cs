@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using LilAgents.Core;
 using Windows.UI;
 
 namespace LilAgents.Themes;
@@ -23,7 +24,7 @@ public sealed record PopoverTheme
         PopoverCornerRadius = 24;
         TitleBarBg = Color.FromArgb(255, 250, 237, 224);
         TitleText = Color.FromArgb(255, 217, 89, 115);
-        TitleString = "claude ~";
+        TitleFormat = TitleFormat.LowercaseTilde;
         TitleFontFamily = "Segoe UI Variable";
         TitleFontSize = 12;
         SeparatorColor = Color.FromArgb(64, 242, 140, 166);
@@ -56,7 +57,8 @@ public sealed record PopoverTheme
     public required double PopoverCornerRadius { get; init; }
     public required Color TitleBarBg { get; init; }
     public required Color TitleText { get; init; }
-    public required string TitleString { get; init; }
+    public required TitleFormat TitleFormat { get; init; }
+    public string TitleString => AgentProviderExtensions.Current.TitleString(TitleFormat);
     public required string TitleFontFamily { get; init; }
     public required double TitleFontSize { get; init; }
     public required Color SeparatorColor { get; init; }
@@ -99,7 +101,7 @@ public sealed record PopoverTheme
         PopoverCornerRadius = 24,
         TitleBarBg = Color.FromArgb(255, 250, 237, 224),
         TitleText = Color.FromArgb(255, 217, 89, 115),
-        TitleString = "claude ~",
+        TitleFormat = TitleFormat.LowercaseTilde,
         TitleFontFamily = "Segoe UI Variable",
         TitleFontSize = 12,
         SeparatorColor = Color.FromArgb(64, 242, 140, 166),
@@ -132,7 +134,7 @@ public sealed record PopoverTheme
         PopoverCornerRadius = 12,
         TitleBarBg = Color.FromArgb(255, 26, 26, 26),
         TitleText = Color.FromArgb(255, 255, 102, 0),
-        TitleString = "CLAUDE",
+        TitleFormat = TitleFormat.Uppercase,
         TitleFontFamily = "Cascadia Mono",
         TitleFontSize = 10,
         SeparatorColor = Color.FromArgb(77, 255, 102, 0),
@@ -165,7 +167,7 @@ public sealed record PopoverTheme
         PopoverCornerRadius = 16,
         TitleBarBg = Color.FromArgb(255, 224, 230, 237),
         TitleText = Color.FromArgb(255, 77, 77, 89),
-        TitleString = "claude ~",
+        TitleFormat = TitleFormat.LowercaseTilde,
         TitleFontFamily = "Segoe UI Variable",
         TitleFontSize = 12,
         SeparatorColor = Color.FromArgb(102, 204, 209, 217),
@@ -198,7 +200,7 @@ public sealed record PopoverTheme
         PopoverCornerRadius = 10,
         TitleBarBg = Color.FromArgb(255, 184, 191, 173),
         TitleText = Color.FromArgb(255, 38, 43, 31),
-        TitleString = "Claude",
+        TitleFormat = TitleFormat.Capitalized,
         TitleFontFamily = "Segoe UI Variable",
         TitleFontSize = 11,
         SeparatorColor = Color.FromArgb(128, 140, 148, 128),

@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using LilAgents.Core;
 using LilAgents.Interop;
 using LilAgents.Themes;
 using Microsoft.UI.Dispatching;
@@ -29,6 +30,10 @@ public sealed class TrayIconService : IDisposable
     private const int ID_DISPLAY_AUTO = 400;
     private const int ID_DISPLAY_BASE = 401; // +index
     private const int ID_UPDATE = 500;
+    private const int ID_PROVIDER_CLAUDE = 600;
+    private const int ID_PROVIDER_CODEX = 601;
+    private const int ID_PROVIDER_COPILOT = 602;
+    private const int ID_PROVIDER_GEMINI = 603;
     private const int ID_QUIT = 999;
 
     public event Action<string, bool>? CharacterToggled;
@@ -36,6 +41,7 @@ public sealed class TrayIconService : IDisposable
     public event Action<PopoverTheme>? ThemeSelected;
     public event Action<int>? DisplaySelected;
     public event Action? CheckForUpdatesRequested;
+    public event Action<AgentProvider>? ProviderSelected;
     public event Action? QuitRequested;
 
     public TrayIconService(SettingsService settings)
@@ -89,6 +95,18 @@ public sealed class TrayIconService : IDisposable
             // ── Sounds ─────────────────────────────────────
             AppendCheckedItem(hMenu, ID_SOUNDS, "Sounds", _settings.SoundsEnabled);
             AppendSeparator(hMenu);
+
+            // ── Provider submenu ───────────────────────────
+            var hProviderMenu = CreatePopupMenu();
+            var currentProvider = AgentProviderExtensions.Current;
+            int[] providerIds = [ID_PROVIDER_CLAUDE, ID_PROVIDER_CODEX, ID_PROVIDER_COPILOT, ID_PROVIDER_GEMINI];
+            AgentProvider[] providers = [AgentProvider.Claude, AgentProvider.Codex, AgentProvider.Copilot, AgentProvider.Gemini];
+            for (int i = 0; i < providers.Length; i++)
+            {
+                AppendRadioItem(hProviderMenu, providerIds[i], providers[i].DisplayName(),
+                    providers[i] == currentProvider);
+            }
+            AppendSubmenu(hMenu, hProviderMenu, "Provider");
 
             // ── Style submenu ──────────────────────────────
             var hStyleMenu = CreatePopupMenu();
@@ -169,6 +187,18 @@ public sealed class TrayIconService : IDisposable
                 break;
             case ID_THEME_MOSS:
                 Dispatch(() => ThemeSelected?.Invoke(PopoverTheme.Moss));
+                break;
+            case ID_PROVIDER_CLAUDE:
+                Dispatch(() => ProviderSelected?.Invoke(AgentProvider.Claude));
+                break;
+            case ID_PROVIDER_CODEX:
+                Dispatch(() => ProviderSelected?.Invoke(AgentProvider.Codex));
+                break;
+            case ID_PROVIDER_COPILOT:
+                Dispatch(() => ProviderSelected?.Invoke(AgentProvider.Copilot));
+                break;
+            case ID_PROVIDER_GEMINI:
+                Dispatch(() => ProviderSelected?.Invoke(AgentProvider.Gemini));
                 break;
             case ID_DISPLAY_AUTO:
                 Dispatch(() => { _settings.PinnedDisplayIndex = -1; DisplaySelected?.Invoke(-1); });

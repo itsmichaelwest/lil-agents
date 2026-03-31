@@ -78,13 +78,17 @@ public sealed class WalkerCharacter
         "let me check", "working on it", "almost...", "bear with me",
         "on it!", "gimme a sec", "brb", "processing...",
         "hang tight", "just a moment", "figuring it out",
-        "crunching...", "reading...", "looking..."
+        "crunching...", "reading...", "looking...",
+        "cooking...", "vibing...", "digging in",
+        "connecting dots", "give me a sec",
+        "don't rush me", "calculating...", "assembling\u2026"
     ];
 
     private static readonly string[] CompletionPhrases =
     [
         "done!", "all set!", "ready!", "here you go", "got it!",
-        "finished!", "ta-da!", "voila!"
+        "finished!", "ta-da!", "voila!",
+        "boom!", "there ya go!", "check it out!"
     ];
 
     private double _lastPhraseUpdate;
@@ -174,7 +178,7 @@ public sealed class WalkerCharacter
         }
     }
 
-    private bool IsClaudeBusy => _chatSession?.IsBusy ?? false;
+    private bool IsAgentBusy => _chatSession?.IsBusy ?? false;
 
     private void OnTurnCompleted()
     {
@@ -246,7 +250,7 @@ public sealed class WalkerCharacter
             _completionBubbleExpiry = Now() + 3.0;
             ShowBubble(_currentPhrase, isCompletion: true);
         }
-        else if (IsClaudeBusy)
+        else if (IsAgentBusy)
         {
             _currentPhrase = "";
             _lastPhraseUpdate = 0;
@@ -533,7 +537,7 @@ public sealed class WalkerCharacter
             return;
         }
 
-        if (IsClaudeBusy && !IsIdleForPopover)
+        if (IsAgentBusy && !IsIdleForPopover)
         {
             string oldPhrase = _currentPhrase;
             UpdateThinkingPhrase();

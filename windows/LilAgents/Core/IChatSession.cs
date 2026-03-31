@@ -1,7 +1,7 @@
 namespace LilAgents.Core;
 
 /// <summary>
-/// Manages a Claude Code CLI subprocess for chat interaction.
+/// Manages an agent CLI subprocess for chat interaction.
 /// Handles NDJSON streaming protocol, tool use, and message history.
 /// </summary>
 public interface IChatSession
@@ -13,6 +13,7 @@ public interface IChatSession
     void Start();
     void Send(string message);
     void Terminate();
+    void ClearHistory();
 
     event Action<string>? TextReceived;
     event Action? TurnCompleted;

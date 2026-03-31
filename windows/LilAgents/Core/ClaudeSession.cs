@@ -49,7 +49,7 @@ public sealed class ClaudeSession : IChatSession, IDisposable
 
     public void Start()
     {
-        var claudePath = ClaudePathResolver.Resolve();
+        var claudePath = BinaryResolver.Resolve("claude");
         if (claudePath is null)
         {
             var msg = "Claude CLI not found.\n\n"
@@ -98,7 +98,7 @@ public sealed class ClaudeSession : IChatSession, IDisposable
     {
         if (_process is not null && !_process.HasExited)
         {
-            try { _process.Kill(entireProcessTree: true); }
+            try { _process.Kill(); }
             catch { /* already dead */ }
         }
         IsRunning = false;
@@ -125,6 +125,9 @@ public sealed class ClaudeSession : IChatSession, IDisposable
 
         // Ensure TERM=dumb so Claude CLI does not emit ANSI escape codes.
         psi.Environment["TERM"] = "dumb";
+        // Strip env vars that interfere with nested Claude CLI invocations.
+        psi.Environment.Remove("CLAUDECODE");
+        psi.Environment.Remove("CLAUDE_CODE_ENTRYPOINT");
 
         try
         {
@@ -393,6 +396,8 @@ public sealed class ClaudeSession : IChatSession, IDisposable
                  ?? string.Join(", ", input.Keys.OrderBy(k => k).Take(3)),
         };
     }
+
+    public void ClearHistory() => _history.Clear();
 
     // ── Helpers ──────────────────────────────────────────────────────
 

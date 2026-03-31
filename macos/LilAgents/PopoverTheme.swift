@@ -10,7 +10,8 @@ struct PopoverTheme {
     let titleBarBg: NSColor
     let titleText: NSColor
     let titleFont: NSFont
-    let titleString: String
+    let titleFormat: TitleFormat
+    var titleString: String { AgentProvider.current.titleString(format: titleFormat) }
     let separatorColor: NSColor
     // Terminal
     let font: NSFont
@@ -42,7 +43,7 @@ struct PopoverTheme {
         titleBarBg: NSColor(red: 0.1, green: 0.1, blue: 0.1, alpha: 1.0),
         titleText: NSColor(red: 1.0, green: 0.4, blue: 0.0, alpha: 1.0),
         titleFont: NSFont(name: "SFMono-Bold", size: 10) ?? .monospacedSystemFont(ofSize: 10, weight: .bold),
-        titleString: "CLAUDE",
+        titleFormat: .uppercase,
         separatorColor: NSColor(red: 1.0, green: 0.4, blue: 0.0, alpha: 0.3),
         font: NSFont(name: "SFMono-Regular", size: 11.5) ?? .monospacedSystemFont(ofSize: 11.5, weight: .regular),
         fontBold: NSFont(name: "SFMono-Medium", size: 11.5) ?? .monospacedSystemFont(ofSize: 11.5, weight: .medium),
@@ -71,7 +72,7 @@ struct PopoverTheme {
         titleBarBg: NSColor(red: 0.98, green: 0.93, blue: 0.88, alpha: 1.0),
         titleText: NSColor(red: 0.85, green: 0.35, blue: 0.45, alpha: 1.0),
         titleFont: .systemFont(ofSize: 12, weight: .heavy),
-        titleString: "claude ~",
+        titleFormat: .lowercaseTilde,
         separatorColor: NSColor(red: 0.95, green: 0.55, blue: 0.65, alpha: 0.25),
         font: .systemFont(ofSize: 12, weight: .regular),
         fontBold: .systemFont(ofSize: 12, weight: .semibold),
@@ -100,7 +101,7 @@ struct PopoverTheme {
         titleBarBg: NSColor(red: 0.88, green: 0.90, blue: 0.93, alpha: 1.0),
         titleText: NSColor(red: 0.3, green: 0.3, blue: 0.35, alpha: 1.0),
         titleFont: .systemFont(ofSize: 12, weight: .semibold),
-        titleString: "claude ~",
+        titleFormat: .lowercaseTilde,
         separatorColor: NSColor(red: 0.8, green: 0.82, blue: 0.85, alpha: 0.4),
         font: .systemFont(ofSize: 12, weight: .regular),
         fontBold: .systemFont(ofSize: 12, weight: .semibold),
@@ -129,7 +130,7 @@ struct PopoverTheme {
         titleBarBg: NSColor(red: 0.72, green: 0.75, blue: 0.68, alpha: 1.0),
         titleText: NSColor(red: 0.15, green: 0.17, blue: 0.12, alpha: 1.0),
         titleFont: NSFont(name: "Chicago", size: 11) ?? .systemFont(ofSize: 11, weight: .bold),
-        titleString: "Claude",
+        titleFormat: .capitalized,
         separatorColor: NSColor(red: 0.55, green: 0.58, blue: 0.50, alpha: 0.5),
         font: NSFont(name: "Geneva", size: 11) ?? .monospacedSystemFont(ofSize: 11, weight: .regular),
         fontBold: NSFont(name: "Geneva", size: 11) ?? .monospacedSystemFont(ofSize: 11, weight: .bold),
@@ -150,7 +151,21 @@ struct PopoverTheme {
     )
 
     static let allThemes: [PopoverTheme] = [.playful, .teenageEngineering, .wii, .iPod]
-    static var current: PopoverTheme = .playful
+
+    private static let themeKey = "selectedThemeName"
+
+    static var current: PopoverTheme {
+        get {
+            if let saved = UserDefaults.standard.string(forKey: themeKey),
+               let match = allThemes.first(where: { $0.name == saved }) {
+                return match
+            }
+            return .playful
+        }
+        set {
+            UserDefaults.standard.set(newValue.name, forKey: themeKey)
+        }
+    }
     static var customFontName: String? = ".AppleSystemUIFontRounded"
     static var customFontSize: CGFloat = 13
 
@@ -166,7 +181,7 @@ struct PopoverTheme {
             popoverBorder: border,
             popoverBorderWidth: popoverBorderWidth, popoverCornerRadius: popoverCornerRadius,
             titleBarBg: NSColor(red: min(r * 0.3 + 0.7, 1), green: min(g * 0.3 + 0.7, 1), blue: min(b * 0.3 + 0.7, 1), alpha: 1.0),
-            titleText: color, titleFont: titleFont, titleString: titleString,
+            titleText: color, titleFont: titleFont, titleFormat: titleFormat,
             separatorColor: light,
             font: font, fontBold: fontBold,
             textPrimary: textPrimary, textDim: textDim,
@@ -191,7 +206,7 @@ struct PopoverTheme {
         return PopoverTheme(
             name: name, popoverBg: popoverBg, popoverBorder: popoverBorder,
             popoverBorderWidth: popoverBorderWidth, popoverCornerRadius: popoverCornerRadius,
-            titleBarBg: titleBarBg, titleText: titleText, titleFont: titleFont, titleString: titleString,
+            titleBarBg: titleBarBg, titleText: titleText, titleFont: titleFont, titleFormat: titleFormat,
             separatorColor: separatorColor,
             font: baseFont, fontBold: boldFont,
             textPrimary: textPrimary, textDim: textDim, accentColor: accentColor,

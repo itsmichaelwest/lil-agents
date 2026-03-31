@@ -16,11 +16,13 @@ namespace LilAgents.Views;
 public sealed partial class ChatView : UserControl
 {
     private string _currentAssistantText = "";
+    private string _lastAssistantText = "";
     private bool _isStreaming;
     private RichTextBlock? _streamingBlock;
     private readonly MarkdownRenderer _markdown = new();
 
     public event Action<string>? MessageSubmitted;
+    public event Action? ClearRequested;
 
     public ChatView()
     {
@@ -56,6 +58,7 @@ public sealed partial class ChatView : UserControl
         InputBox.PlaceholderForeground = new SolidColorBrush(t.TextDim);
         InputBox.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0));
         InputBox.BorderThickness = new Thickness(0);
+        InputBox.PlaceholderText = AgentProviderExtensions.Current.InputPlaceholder();
     }
 
     // ── Input handling ───────────────────────────────────────────────
@@ -68,13 +71,16 @@ public sealed partial class ChatView : UserControl
         if (string.IsNullOrEmpty(text)) return;
 
         InputBox.Text = "";
+        e.Handled = true;
+
+        if (HandleSlashCommand(text)) return;
+
         AppendUser(text);
         _isStreaming = true;
         _currentAssistantText = "";
         _streamingBlock = null;
         _markdown.Reset();
         MessageSubmitted?.Invoke(text);
-        e.Handled = true;
     }
 
     public void FocusInput() => InputBox.Focus(FocusState.Programmatic);
@@ -143,6 +149,8 @@ public sealed partial class ChatView : UserControl
     {
         if (_isStreaming)
         {
+            if (!string.IsNullOrEmpty(_currentAssistantText))
+                _lastAssistantText = _currentAssistantText;
             _isStreaming = false;
             _streamingBlock = null;
             _markdown.Reset();
@@ -316,6 +324,143 @@ public sealed partial class ChatView : UserControl
         _isStreaming = false;
         _currentAssistantText = "";
         _markdown.Reset();
+    }
+
+    // ── Slash commands ────────────────────────────────────────────────
+
+    public void HandleSlashCommandPublic(string text) => HandleSlashCommand(text);
+
+    private bool HandleSlashCommand(string text)
+    {
+        if (!text.StartsWith('/')) return false;
+        var cmd = text.Trim().ToLowerInvariant();
+
+        switch (cmd)
+        {
+            case "/clear":
+                MessagesPanel.Children.Clear();
+                _streamingBlock = null;
+                _isStreaming = false;
+                _currentAssistantText = "";
+                _markdown.Reset();
+                ClearRequested?.Invoke();
+                return true;
+
+            case "/copy":
+                var toCopy = string.IsNullOrEmpty(_lastAssistantText)
+                    ? "nothing to copy yet"
+                    : _lastAssistantText;
+                var dp = new Windows.ApplicationModel.DataTransfer.DataPackage();
+                dp.SetText(toCopy);
+                Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dp);
+                AppendSuccess("copied to clipboard");
+                return true;
+
+            case "/help":
+                AppendHelp();
+                return true;
+
+            default:
+                AppendError($"unknown command: {text} (try /help)");
+                return true;
+        }
+    }
+
+    private void AppendSuccess(string text)
+    {
+        var t = _theme;
+        var rtb = new RichTextBlock
+        {
+            IsTextSelectionEnabled = true,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(t.TextPrimary),
+            Margin = new Thickness(0, 2, 0, 0),
+        };
+        var para = new Paragraph { Margin = new Thickness(0, 2, 0, 2) };
+        para.Inlines.Add(new Run
+        {
+            Text = $"  \u2713 {text}",
+            Foreground = new SolidColorBrush(t.SuccessColor),
+            FontFamily = new FontFamily(t.FontFamily),
+            FontSize = t.FontSize
+        });
+        rtb.Blocks.Add(para);
+        MessagesPanel.Children.Add(rtb);
+        ScrollToBottom();
+    }
+
+    private void AppendHelp()
+    {
+        var t = _theme;
+        var rtb = new RichTextBlock
+        {
+            IsTextSelectionEnabled = true,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(t.TextPrimary),
+            Margin = new Thickness(0, 2, 0, 0),
+        };
+        var para = new Paragraph { Margin = new Thickness(0, 4, 0, 4) };
+
+        para.Inlines.Add(new Run
+        {
+            Text = "  lil agents \u2014 slash commands\n",
+            Foreground = new SolidColorBrush(t.AccentColor),
+            FontWeight = FontWeights.Bold,
+            FontFamily = new FontFamily(t.FontFamily),
+            FontSize = t.FontSize
+        });
+
+        para.Inlines.Add(new Run
+        {
+            Text = "  /clear  ",
+            Foreground = new SolidColorBrush(t.TextPrimary),
+            FontWeight = FontWeights.Bold,
+            FontFamily = new FontFamily(t.FontFamily),
+            FontSize = t.FontSize
+        });
+        para.Inlines.Add(new Run
+        {
+            Text = "clear chat history\n",
+            Foreground = new SolidColorBrush(t.TextDim),
+            FontFamily = new FontFamily(t.FontFamily),
+            FontSize = t.FontSize
+        });
+
+        para.Inlines.Add(new Run
+        {
+            Text = "  /copy   ",
+            Foreground = new SolidColorBrush(t.TextPrimary),
+            FontWeight = FontWeights.Bold,
+            FontFamily = new FontFamily(t.FontFamily),
+            FontSize = t.FontSize
+        });
+        para.Inlines.Add(new Run
+        {
+            Text = "copy last response\n",
+            Foreground = new SolidColorBrush(t.TextDim),
+            FontFamily = new FontFamily(t.FontFamily),
+            FontSize = t.FontSize
+        });
+
+        para.Inlines.Add(new Run
+        {
+            Text = "  /help   ",
+            Foreground = new SolidColorBrush(t.TextPrimary),
+            FontWeight = FontWeights.Bold,
+            FontFamily = new FontFamily(t.FontFamily),
+            FontSize = t.FontSize
+        });
+        para.Inlines.Add(new Run
+        {
+            Text = "show this message",
+            Foreground = new SolidColorBrush(t.TextDim),
+            FontFamily = new FontFamily(t.FontFamily),
+            FontSize = t.FontSize
+        });
+
+        rtb.Blocks.Add(para);
+        MessagesPanel.Children.Add(rtb);
+        ScrollToBottom();
     }
 
     // ── Unused stubs (kept for interface compat) ─────────────────────

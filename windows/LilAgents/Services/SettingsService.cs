@@ -57,6 +57,12 @@ public sealed class SettingsService
         set => SetValue(nameof(PinnedDisplayIndex), value);
     }
 
+    public string SelectedProvider
+    {
+        get => GetValue(nameof(SelectedProvider), "Claude");
+        set => SetValue(nameof(SelectedProvider), value);
+    }
+
     private T GetValue<T>(string key, T defaultValue)
     {
         if (!_data.TryGetValue(key, out var element))

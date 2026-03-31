@@ -110,6 +110,9 @@ public sealed partial class PopoverWindow : Window
 
         Separator.Background = new SolidColorBrush(t.SeparatorColor);
 
+        CopyIcon.Foreground = new SolidColorBrush(
+            Windows.UI.Color.FromArgb(192, t.TitleText.R, t.TitleText.G, t.TitleText.B));
+
         Chat.Theme = t;
     }
 
@@ -128,6 +131,7 @@ public sealed partial class PopoverWindow : Window
         session.ToolResultReceived += OnToolResultReceived;
 
         Chat.MessageSubmitted += OnMessageSubmitted;
+        Chat.ClearRequested += OnClearRequested;
 
         if (session.History.Count > 0)
             Chat.ReplayHistory(session.History);
@@ -140,6 +144,8 @@ public sealed partial class PopoverWindow : Window
     /// </summary>
     public void UnbindSession()
     {
+        Chat.ClearRequested -= OnClearRequested;
+
         if (_session is not null)
         {
             _session.TextReceived -= OnTextReceived;
@@ -150,6 +156,8 @@ public sealed partial class PopoverWindow : Window
             _session = null;
         }
     }
+
+    private void OnClearRequested() => _session?.ClearHistory();
 
     // ── Positioning ──────────────────────────────────────────────────
 
@@ -269,6 +277,11 @@ public sealed partial class PopoverWindow : Window
         => Chat.AppendToolResult(summary, isError);
 
     private void OnMessageSubmitted(string text) => _session?.Send(text);
+
+    private void CopyButton_Click(object sender, RoutedEventArgs e)
+    {
+        Chat.HandleSlashCommandPublic("/copy");
+    }
 
     private void RootContainer_KeyDown(object sender, KeyRoutedEventArgs e)
     {

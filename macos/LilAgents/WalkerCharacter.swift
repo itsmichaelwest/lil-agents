@@ -46,14 +46,18 @@ class WalkerCharacter {
     var isIdleForPopover = false
     var popoverWindow: NSWindow?
     var terminalView: TerminalView?
-    var claudeSession: ClaudeSession?
+    var session: (any AgentSession)?
     var clickOutsideMonitor: Any?
     var escapeKeyMonitor: Any?
     var currentStreamingText = ""
     weak var controller: LilAgentsController?
     var themeOverride: PopoverTheme?
-    var isClaudeBusy: Bool { claudeSession?.isBusy ?? false }
+    var isAgentBusy: Bool { session?.isBusy ?? false }
     var thinkingBubbleWindow: NSWindow?
+    private(set) var isManuallyVisible = true
+    private var environmentHiddenAt: CFTimeInterval?
+    private var wasPopoverVisibleBeforeEnvironmentHide = false
+    private var wasBubbleVisibleBeforeEnvironmentHide = false
 
     init(videoName: String) {
         self.videoName = videoName
@@ -93,7 +97,7 @@ class WalkerCharacter {
         window.hasShadow = false
         window.level = .statusBar
         window.ignoresMouseEvents = false
-        window.collectionBehavior = [.canJoinAllSpaces, .stationary]
+        window.collectionBehavior = [.moveToActiveSpace, .stationary]
 
         let hostView = CharacterContentView(frame: CGRect(x: 0, y: 0, width: displayWidth, height: displayHeight))
         hostView.character = self
@@ -103,6 +107,66 @@ class WalkerCharacter {
 
         window.contentView = hostView
         window.orderFrontRegardless()
+    }
+
+    // MARK: - Visibility
+
+    func setManuallyVisible(_ visible: Bool) {
+        isManuallyVisible = visible
+        if visible {
+            if environmentHiddenAt == nil {
+                window.orderFrontRegardless()
+            }
+        } else {
+            queuePlayer.pause()
+            window.orderOut(nil)
+            popoverWindow?.orderOut(nil)
+            thinkingBubbleWindow?.orderOut(nil)
+        }
+    }
+
+    func hideForEnvironment() {
+        guard environmentHiddenAt == nil else { return }
+
+        environmentHiddenAt = CACurrentMediaTime()
+        wasPopoverVisibleBeforeEnvironmentHide = popoverWindow?.isVisible ?? false
+        wasBubbleVisibleBeforeEnvironmentHide = thinkingBubbleWindow?.isVisible ?? false
+
+        queuePlayer.pause()
+        window.orderOut(nil)
+        popoverWindow?.orderOut(nil)
+        thinkingBubbleWindow?.orderOut(nil)
+    }
+
+    func showForEnvironmentIfNeeded() {
+        guard let hiddenAt = environmentHiddenAt else { return }
+
+        let hiddenDuration = CACurrentMediaTime() - hiddenAt
+        environmentHiddenAt = nil
+        walkStartTime += hiddenDuration
+        pauseEndTime += hiddenDuration
+        completionBubbleExpiry += hiddenDuration
+        lastPhraseUpdate += hiddenDuration
+
+        guard isManuallyVisible else { return }
+
+        window.orderFrontRegardless()
+        if isWalking {
+            queuePlayer.play()
+        }
+
+        if isIdleForPopover && wasPopoverVisibleBeforeEnvironmentHide {
+            updatePopoverPosition()
+            popoverWindow?.orderFrontRegardless()
+            popoverWindow?.makeKey()
+            if let terminal = terminalView {
+                popoverWindow?.makeFirstResponder(terminal.inputField)
+            }
+        }
+
+        if wasBubbleVisibleBeforeEnvironmentHide {
+            updateThinkingBubble()
+        }
     }
 
     // MARK: - Click Handling & Popover
@@ -193,18 +257,18 @@ class WalkerCharacter {
         showingCompletion = false
         hideBubble()
 
-        if claudeSession == nil {
-            let session = ClaudeSession()
-            claudeSession = session
-            wireSession(session)
-            session.start()
+        if session == nil {
+            let newSession = AgentProvider.current.createSession()
+            session = newSession
+            wireSession(newSession)
+            newSession.start()
         }
 
         if popoverWindow == nil {
             createPopoverWindow()
         }
 
-        if let terminal = terminalView, let session = claudeSession, !session.history.isEmpty {
+        if let terminal = terminalView, let session = session, !session.history.isEmpty {
             terminal.replayHistory(session.history)
         }
 
@@ -251,7 +315,7 @@ class WalkerCharacter {
             // Reset expiry so user gets the full 3s from now
             completionBubbleExpiry = CACurrentMediaTime() + 3.0
             showBubble(text: currentPhrase, isCompletion: true)
-        } else if isClaudeBusy {
+        } else if isAgentBusy {
             // Force a fresh phrase pick and show immediately
             currentPhrase = ""
             lastPhraseUpdate = 0
@@ -293,7 +357,7 @@ class WalkerCharacter {
         win.backgroundColor = .clear
         win.hasShadow = true
         win.level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 10)
-        win.collectionBehavior = [.canJoinAllSpaces, .stationary]
+        win.collectionBehavior = [.moveToActiveSpace, .stationary]
         let brightness = t.popoverBg.redComponent * 0.299 + t.popoverBg.greenComponent * 0.587 + t.popoverBg.blueComponent * 0.114
         win.appearance = NSAppearance(named: brightness < 0.5 ? .darkAqua : .aqua)
 
@@ -314,8 +378,19 @@ class WalkerCharacter {
         let titleLabel = NSTextField(labelWithString: t.titleString)
         titleLabel.font = t.titleFont
         titleLabel.textColor = t.titleText
-        titleLabel.frame = NSRect(x: 12, y: 6, width: 200, height: 16)
+        titleLabel.frame = NSRect(x: 12, y: 6, width: popoverWidth - 80, height: 16)
         titleBar.addSubview(titleLabel)
+
+        // Copy button in title bar (icon only)
+        let copyBtn = NSButton(frame: NSRect(x: popoverWidth - 28, y: 5, width: 16, height: 16))
+        copyBtn.image = NSImage(systemSymbolName: "square.on.square", accessibilityDescription: "Copy")
+        copyBtn.imageScaling = .scaleProportionallyDown
+        copyBtn.bezelStyle = .inline
+        copyBtn.isBordered = false
+        copyBtn.contentTintColor = t.titleText.withAlphaComponent(0.75)
+        copyBtn.target = self
+        copyBtn.action = #selector(copyLastResponseFromButton)
+        titleBar.addSubview(copyBtn)
 
         let sep = NSView(frame: NSRect(x: 0, y: popoverHeight - 29, width: popoverWidth, height: 1))
         sep.wantsLayer = true
@@ -327,7 +402,10 @@ class WalkerCharacter {
         terminal.themeOverride = themeOverride
         terminal.autoresizingMask = [.width, .height]
         terminal.onSendMessage = { [weak self] message in
-            self?.claudeSession?.send(message: message)
+            self?.session?.send(message: message)
+        }
+        terminal.onClearRequested = { [weak self] in
+            self?.session?.history.removeAll()
         }
         container.addSubview(terminal)
 
@@ -336,7 +414,7 @@ class WalkerCharacter {
         terminalView = terminal
     }
 
-    private func wireSession(_ session: ClaudeSession) {
+    private func wireSession(_ session: any AgentSession, providerName: String = AgentProvider.current.displayName) {
         session.onText = { [weak self] text in
             self?.currentStreamingText += text
             self?.terminalView?.appendStreamingText(text)
@@ -364,8 +442,13 @@ class WalkerCharacter {
 
         session.onProcessExit = { [weak self] in
             self?.terminalView?.endStreaming()
-            self?.terminalView?.appendError("Claude session ended.")
+            self?.terminalView?.appendError("\(providerName) session ended.")
         }
+    }
+
+    @objc func copyLastResponseFromButton() {
+        // Trigger the /copy slash command via the terminal view
+        terminalView?.handleSlashCommandPublic("/copy")
     }
 
     private func formatToolInput(_ input: [String: Any]) -> String {
@@ -398,12 +481,16 @@ class WalkerCharacter {
         "let me check", "working on it", "almost...", "bear with me",
         "on it!", "gimme a sec", "brb", "processing...",
         "hang tight", "just a moment", "figuring it out",
-        "crunching...", "reading...", "looking..."
+        "crunching...", "reading...", "looking...",
+        "cooking...", "vibing...", "digging in",
+        "connecting dots", "give me a sec",
+        "don't rush me", "calculating...", "assembling\u{2026}"
     ]
 
     private static let completionPhrases = [
         "done!", "all set!", "ready!", "here you go", "got it!",
-        "finished!", "ta-da!", "voila!"
+        "finished!", "ta-da!", "voila!",
+        "boom!", "there ya go!", "check it out!"
     ]
 
     private var lastPhraseUpdate: CFTimeInterval = 0
@@ -432,7 +519,7 @@ class WalkerCharacter {
             return
         }
 
-        if isClaudeBusy && !isIdleForPopover {
+        if isAgentBusy && !isIdleForPopover {
             let oldPhrase = currentPhrase
             updateThinkingPhrase()
             if currentPhrase != oldPhrase && !oldPhrase.isEmpty && !phraseAnimating {
@@ -553,7 +640,7 @@ class WalkerCharacter {
         win.hasShadow = true
         win.level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 5)
         win.ignoresMouseEvents = true
-        win.collectionBehavior = [.canJoinAllSpaces, .stationary]
+        win.collectionBehavior = [.moveToActiveSpace, .stationary]
 
         let container = NSView(frame: NSRect(x: 0, y: 0, width: w, height: h))
         container.wantsLayer = true
